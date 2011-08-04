@@ -35,6 +35,7 @@ import org.exoplatform.portal.webui.util.Util;
 import org.exoplatform.portal.webui.workspace.UIPortalApplication;
 import org.exoplatform.services.log.ExoLogger;
 import org.exoplatform.services.log.Log;
+import org.exoplatform.web.url.navigation.NodeURL;
 import org.exoplatform.webos.webui.page.UIDesktopPage;
 import org.exoplatform.webui.application.WebuiRequestContext;
 import org.exoplatform.webui.config.annotation.ComponentConfig;
@@ -62,8 +63,11 @@ import javax.portlet.EventRequest;
 public class UIUserToolbarDesktopPortlet extends UIPortletApplication
 {
    public static String DEFAULT_TAB_NAME = "Tab_Default";
+
    private UserNodeFilterConfig toolbarFilterConfig;
-   
+
+   private UserNode desktopNode;
+
    public UIUserToolbarDesktopPortlet() throws Exception
    {
       UserNodeFilterConfig.Builder builder = UserNodeFilterConfig.builder();
@@ -234,10 +238,11 @@ public class UIUserToolbarDesktopPortlet extends UIPortletApplication
          if (userName != null)
          {
             Page page = createPage(userName, toolbarDesktopPortlet);
-            UserNode desktopNode = createNavigation(userName, page.getPageId(), toolbarDesktopPortlet);
+            toolbarDesktopPortlet.desktopNode = createNavigation(userName, page.getPageId(), toolbarDesktopPortlet);
             PortalRequestContext prContext = Util.getPortalRequestContext();
-            prContext.getResponse().sendRedirect(prContext.getPortalURI() + desktopNode.getURI());
-//            updateUI(pageNavigation);
+            NodeURL url = prContext.createURL(NodeURL.TYPE);
+            url.setNode(toolbarDesktopPortlet.desktopNode);
+            prContext.sendRedirect(url.toString());
          }
       }
 
