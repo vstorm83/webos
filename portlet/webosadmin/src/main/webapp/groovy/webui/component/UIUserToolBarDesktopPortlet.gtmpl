@@ -1,13 +1,15 @@
 <%
-    import org.exoplatform.portal.mop.user.UserNavigation;
-    import org.exoplatform.portal.mop.user.UserNode;
-    import org.exoplatform.portal.mop.Visibility;
+	import org.exoplatform.portal.mop.user.UserNavigation;
+	import org.exoplatform.portal.mop.user.UserNode;
+	import org.exoplatform.portal.mop.Visibility;
+  import org.exoplatform.portal.mop.SiteType;
+  import org.exoplatform.web.url.navigation.NavigationResource;
+
 	import org.exoplatform.portal.webui.util.Util ;
 	import org.exoplatform.web.application.JavascriptManager;
 	import org.exoplatform.webos.webui.page.UIDesktopPage;
 	import org.exoplatform.webui.organization.OrganizationUtils;
   import org.exoplatform.web.url.navigation.NodeURL;
-
 	import java.util.Collection;
     
 	import javax.portlet.MimeResponse;
@@ -106,20 +108,28 @@
 
 <%
 	def userNodes = uicomponent.getUserNodes(uicomponent.getCurrentUserNavigation());
-	String defaultDashboardPage = org.exoplatform.webos.toolbar.UIUserToolbarDesktopPortlet.DEFAULT_TAB_NAME;
     String dashboardLink;
     String desktopLink;
-    if (uicomponent.hasDashboardNode()) {
-       dashboardLink = portalURI + defaultDashboardPage;
-    } else {
-       dashboardLink = uicomponent.url("AddDefaultDashboard", defaultDashboardPage);
+    NodeURL dashboardUrl = nodeurl();
+    UserNode dashboardNode = uicomponent.findDashboardNode();
+    if (dashboardNode != null)
+    {
+       dashboardLink = dashboardUrl.setNode(dashboardNode).toString();
+    }
+    else
+    {
+       dashboardUrl.setResource(new NavigationResource(SiteType.USER, rcontext.getRemoteUser(), null));
+       dashboardLink = dashboardUrl.toString();
     }
     
-    if (uicomponent.isWebOSCreated()) {
-       NodeURL url = nodeurl();
-       url.setNode(uicomponent.desktopNode);
-       desktopLink = url.toString();
-    } else {
+    if (uicomponent.isWebOSCreated())
+    {
+       NodeURL webosUrl = nodeurl();
+       webosUrl.setNode(uicomponent.desktopNode);
+       desktopLink = webosUrl.toString();
+    }
+    else
+    {
        desktopLink = uicomponent.url("CreateWebOS");
     }
 %>

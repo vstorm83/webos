@@ -57,9 +57,12 @@ import javax.portlet.EventRequest;
  */
 
 @ComponentConfig(lifecycle = UIApplicationLifecycle.class, template = "app:/groovy/webui/component/UIUserToolBarDesktopPortlet.gtmpl",
-   events = {@EventConfig(name = "AddDefaultDashboard", listeners = UIUserToolbarDesktopPortlet.AddDashboardActionListener.class),
-      @EventConfig(listeners = UIUserToolbarDesktopPortlet.CreateWebOSActionListener.class),
-      @EventConfig(listeners = UIUserToolbarDesktopPortlet.NavigationChangeActionListener.class)})
+   events =
+      {
+         @EventConfig(listeners = UIUserToolbarDesktopPortlet.CreateWebOSActionListener.class),
+         @EventConfig(listeners = UIUserToolbarDesktopPortlet.NavigationChangeActionListener.class)
+      }
+)
 public class UIUserToolbarDesktopPortlet extends UIPortletApplication
 {
    public static String DEFAULT_TAB_NAME = "Tab_Default";
@@ -114,14 +117,24 @@ public class UIUserToolbarDesktopPortlet extends UIPortletApplication
       return page == null || UIDesktopPage.DESKTOP_FACTORY_ID.equals(page.getFactoryId());
    }
    
-   private boolean hasDashboardNode() throws Exception
+   private UserNode findDashboardNode() throws Exception
    {
       Collection<UserNode> nodes = getUserNodes(getCurrentUserNavigation());
-      if (nodes.size() < 1 || (nodes.size() == 1 && isWebOSNode(nodes.iterator().next())))
+      if(nodes == null)
       {
-         return false;
+         return null;
       }
-      return true;
+      else
+      {
+         for(UserNode node : nodes)
+         {
+            if(!isWebOSNode(node))
+            {
+               return node;
+            }
+         }
+         return null;
+      }
    }
 
    private boolean isWebOSCreated() throws Exception
@@ -130,19 +143,6 @@ public class UIUserToolbarDesktopPortlet extends UIPortletApplication
       DataStorage storage = getApplicationComponent(DataStorage.class);
       Page page = storage.getPage(PortalConfig.USER_TYPE + "::" + context.getRemoteUser() + "::" + UIDesktopPage.PAGE_ID);
       return page != null;
-   }
-
-   private UserNode getFirstNonWebOSNode(Collection<UserNode> nodes) throws Exception
-   {
-      for (UserNode node : nodes)
-      {
-         if (!isWebOSNode(node))
-         {
-            return node;
-         }
-      }
-      
-      throw new NullPointerException("There is no dashboard node. The dashboard node existing should be checked before");
    }
 
    static public class NavigationChangeActionListener extends EventListener<UIUserToolbarDesktopPortlet>
@@ -156,72 +156,6 @@ public class UIUserToolbarDesktopPortlet extends UIPortletApplication
       }
    }
 
-   /**
-    * Create user dashboard pagenode or redirect to the first node already created which isn't webos node
-    */
-   static public class AddDashboardActionListener extends EventListener<UIUserToolbarDesktopPortlet>
-   {
-
-      private final static String PAGE_TEMPLATE = "dashboard";
-
-      private static Log logger = ExoLogger.getExoLogger(AddDashboardActionListener.class);
-
-      public void execute(Event<UIUserToolbarDesktopPortlet> event) throws Exception
-      {
-         UIUserToolbarDesktopPortlet toolbarPortlet = event.getSource();
-         String nodeName = event.getRequestContext().getRequestParameter(UIComponent.OBJECTID);
-         
-         Collection<UserNode> nodes = toolbarPortlet.getUserNodes(toolbarPortlet.getCurrentUserNavigation());
-         if (toolbarPortlet.hasDashboardNode())
-         {
-            PortalRequestContext prContext = Util.getPortalRequestContext();
-            prContext.getResponse().sendRedirect(prContext.getPortalURI() + toolbarPortlet.getFirstNonWebOSNode(nodes));
-         }
-         else
-         {
-            createDashboard(nodeName, toolbarPortlet);
-         }
-      }
-
-      private static void createDashboard(String _nodeName, UIUserToolbarDesktopPortlet toolbarPortlet)
-      {
-         try
-         {
-            PortalRequestContext prContext = Util.getPortalRequestContext();
-            if (_nodeName == null)
-            {
-               logger.debug("Parsed nodeName is null, hence use Tab_0 as default name");
-               _nodeName = DEFAULT_TAB_NAME;
-            }
-            UserPortal userPortal = toolbarPortlet.getUserPortal();
-            UserNavigation userNavigation = toolbarPortlet.getCurrentUserNavigation();
-            if (userNavigation == null)
-            {
-               return;
-            }
-
-            SiteKey siteKey = userNavigation.getKey();
-            UserPortalConfigService _configService = toolbarPortlet.getApplicationComponent(UserPortalConfigService.class);
-            Page page = _configService.createPageTemplate(PAGE_TEMPLATE, siteKey.getTypeName(), siteKey.getName());
-            page.setTitle(_nodeName);
-            page.setName(_nodeName);
-
-            toolbarPortlet.getApplicationComponent(DataStorage.class).create(page);
-
-            UserNode rootNode = userPortal.getNode(userNavigation, Scope.CHILDREN, toolbarPortlet.toolbarFilterConfig, null);
-            UserNode dashboardNode = rootNode.addChild(_nodeName);
-            dashboardNode.setLabel(_nodeName);
-            dashboardNode.setPageRef(page.getPageId());
-            
-            userPortal.saveNode(rootNode, null);
-            prContext.getResponse().sendRedirect(prContext.getPortalURI() + dashboardNode.getURI());
-         }
-         catch (Exception ex)
-         {
-            logger.info("Could not create default dashboard page", ex);
-         }
-      }
-   }
 
    /**
     * Create user page navigation, page and node for Desktop if they haven't been created already. 
